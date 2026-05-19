@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktywna Platforma Edukacyjna</title>
+    <style>
+        :root {
+            --primary: #10b981; /* Zielony odcień edukacyjny */
+            --bg: #f0fdf4;
+            --card: #ffffff;
+            --text: #14532d;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(20, 83, 45, 0.05);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .hidden { display: none !important; }
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 15px;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        
+        .image-container {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .main-img {
+            max-width: 100%;
+            max-height: 260px;
+            border: 3px solid #bbf7d0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            object-fit: cover;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .option-tile {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .option-tile:hover {
+            border-color: var(--primary);
+            background-color: #f0fdf4;
+        }
+        .option-tile.correct {
+            background-color: #dcfce7 !important;
+            border-color: var(--success) !important;
+            color: #15803d !important;
+        }
+        .option-tile.wrong {
+            background-color: #fee2e2 !important;
+            border-color: var(--error) !important;
+            color: #991b1b !important;
+        }
+        .option-tile.disabled {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .fiszka-box {
+            background-color: #f0fdf4;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            text-align: left;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+        .progress-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #166534;
+        }
+        .progress-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Ekran startowy -->
+    <div id="start-screen">
+        <h1>🎓 Interaktywny Asystent Nauki</h1>
+        <p>Przejdź przez kurs składający się z 20 zagadnień. Odpowiedz na pytanie, aby odblokować pełną fiszkę wiedzy z podsumowaniem materiału.</p>
+        <button class="btn" onclick="startLearning()">Rozpocznij naukę</button>
+    </div>
+
+    <!-- Ekran nauki -->
+    <div id="learning-screen" class="hidden">
+        <div class="progress-container">
+            <span id="progress-text">Zagadnienie 1 z 20</span>
+            <div class="progress-bar"><div id="progress" class="progress-fill"></div></div>
+        </div>
+        <h2 id="question-title">Wybierz poprawną odpowiedź:</h2>
+        
+        <div class="image-container">
+            <img id="main-image" src="" alt="Materiał edukacyjny" class="main-img">
+        </div>
+
+        <div id="options-grid" class="options-grid"></div>
+        
+        <!-- Okienko z pełną odpowiedzią (Fiszka podsumowująca) -->
+        <div id="fiszka" class="fiszka-box hidden"></div>
+        
+        <button class="btn hidden" id="next-btn" onclick="nextQuestion()">Następne zagadnienie ➔</button>
+    </div>
+
+    <!-- Ekran zakończenia -->
+    <div id="end-screen" class="hidden">
+        <h2>🎉 Gratulacje! Materiał został opanowany!</h2>
+        <p>Przeszłaś przez całą bazę 20 fiszek edukacyjnych. Twój wynik poprawnych odpowiedzi za pierwszym podejściem:</p>
+        <div style="font-size: 3rem; font-weight: bold; color: var(--primary); margin: 20px 0;" id="final-score">0 / 20</div>
+        <button class="btn" onclick="location.reload()">Powtórz naukę</button>
+    </div>
+</div>
+
+<script>
+// Baza 20 pytań i fiszek wyjaśniających (Wzór, który klient może dowolnie edytować)
+const educationDatabase = [
+    {
+        image: "https://unsplash.com",
+        q: "Która z tych roślin jest powszechnie znana jako bogate źródło krzemionki wzmacniającej włosy?",
+        options: ["Mięta", "Skrzyp polny", "Melisa", "Rumianek"],
+        correct: 1,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Skrzyp polny (Equisetum arvense)</b> to jedno z najstarszych ziół na Ziemi. Zawiera ogromne ilości łatwo przyswajalnej krzemionki, która bezpośrednio buduje strukturę włosów, skóry i paznokci. Tradycyjnie stosuje się go w formie naparów lub odwarów."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Który kwiat słynie z silnych właściwości łagodzących podrażnienia i stany zapalne skóry?",
+        options: ["Stokrotka", "Pokrzywa", "Rumianek pospolity", "Oset"],
+        correct: 2,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Rumianek pospolity (Matricaria chamomilla)</b> zawiera chamazulen i bisabolol – związki o udowodnionym działaniu przeciwzapalnym i przeciwalergicznym. Jest idealny do okładów na zmęczone oczy lub wrażliwą skórę."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Substancją odpowiedzialną za charakterystyczny, chłodzący smak i zapach mięty jest:",
+        options: ["Mentol", "Kofeina", "Garbnik", "Eugenol"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Mentol</b> to organiczny związek chemiczny z grupy terpenów, który naturalnie występuje w olejkach eterycznych mięty pieprzowej. Pobudza receptory zimna w skórze i błonach śluzowych, dając natychmiastowe uczucie świeżości."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Głównym i najbardziej znanym zastosowaniem terapeutycznym lawendy jest działanie:",
+        options: ["Pobudzające", "Uspokajające i relaksujące", "Przeczyszczające", "Rozgrzewające"],
+        correct: 1,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Lawenda wąskolistna</b> zawiera linalol, który bezpośrednio wpływa na ośrodkowy układ nerwowy. Obniża poziom lęku, zwalnia tętno i ułatwia wchodzenie w głęboką fazę snu. Idealna do sypialni w formie olejku."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Napar z którego ziół jest najczęściej zalecany jako naturalny środek odkażający do płukania gardła?",
+        options: ["Szałwia lekarska", "Pokrzywa", "Melisa", "Lipowa kora"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Szałwia lekarska</b> zawdzięcza swoją skuteczność bogactwu garbników i olejków eterycznych o silnym działaniu antybakteryjnym oraz przeciwgrzybiczym. Ściąga błony śluzowe i natychmiastowo hamuje rozwój infekcji w gardle."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Kora którego drzewa jest bogatym źródłem garbników stosowanych w stanach zapalnych skóry?",
+        options: ["Dębu", "Brzozy", "Sosny", "Klonu"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Kora dębu</b> to jeden z najsilniejszych naturalnych środków ściągających. Wysoka zawartość garbników sprawia, że okłady lub kąpiele w odwarze z kory dębu hamują krwawienia, działają przeciwzapalnie i przyspieszają regenerację naskórka."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Sok pozyskiwany wiosną z pni brzody to potocznie:",
+        options: ["Oskoła", "Żywica", "Nektar", "Serwatka"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Oskoła (sok z brzozy)</b> to naturalny płyn bogaty w potas, magnez, wapń oraz witaminy z grupy B. Wspomaga pracę nerek, działa moczopędnie i jest tradycyjnie stosowany w kuracjach wzmacniających i oczyszczających na wiosnę."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Wyciąg z kwiatów nagietka lekarskiego jest podstawowym składnikiem maści na:",
+        options: ["Bóle głowy", "Gojenie ran i oparzeń", "Wzrok", "Katar"],
+        correct: 1,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Nagietek lekarski</b> stymuluje procesy odnowy i ziarninowania naskórka. Zawarte w nim karotenoidy oraz flawonoidy przyspieszają znikanie stanów zapalnych, oparzeń słonecznych oraz drobnych uszkodzeń skóry."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Napar z kwiatów lipy stosuje się głównie w celu wywołania działania:",
+        options: ["Napotnego w przeziębieniach", "Pobudzającego pamięć", "Znieczulającego", "Chłodzącego"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Lipa drobnolistna</b> to klasyczny lek medycyny ludowej na przeziębienia. Związki śluzowe zawarte w kwiatach powlekają gardło, łagodząc kaszel, a flawonoidy stymulują wydzielanie potu, co pomaga naturalnie obniżyć gorączkę."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Która z tych powszechnych roślin ma całkowicie jadalne korzenie, liście oraz kwiaty?",
+        options: ["Mniszek lekarski", "Mlecz polny", "Pokrzywa żegawka", "Oset"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Mniszek lekarski</b> jest w pełni użytkową rośliną. Młode liście nadają się do sałatek (wit. K i C), z kwiatów robi się syrop (tzw. miodek mniszkowy), a suszony korzeń wspomaga trawienie i oczyszczanie wątroby."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Młode pędy którego drzewa iglastego zbiera się wiosną na syrop przeciwkaszlowy?",
+        options: ["Sosny zwyczajnej", "Świerku pospolitego", "Jodły", "Cisa"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Sosna zwyczajna</b> produkuje młode pędy bogate w olejek sosnowy, witaminę C i gorycze. Syrop z pędów sosny działa silnie wykrztuśnie i przeciwbakteryjnie, stanowiąc naturalną broń przeciwko infekcjom górnych dróg oddechowych."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Które popularne zioło o żółtych kwiatach bywa nazywane 'rośliną świętojańską'?",
+        options: ["Dziurawiec zwyczajny", "Wrotycz", "Dziewanna", "Glistnik"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Dziurawiec zwyczajny</b> tradycyjnie kwitnie w okolicach nocy świętojańskiej. Zawarta w nim hyperycyna wykazuje działanie poprawiające nastrój (hamuje rozkład serotoniny). Uwaga: zwiększa wrażliwość skóry na słońce!"
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Owoce dzikiej róży są cenione w zielarstwie ze względu na rekordową zawartość:",
+        options: ["Witaminy C", "Cukrów", "Białka", "Żelaza"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Dzika róża (Rosa canina)</b> posiada owoce, które zawierają od 10 do nawet 100 razy więcej witaminy C niż cytrusy. Jest ona kluczowa dla syntezy kolagenu, wzmacniania naczyń krwionośnych oraz wspierania układu odpornościowego."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Wyciąg z koniczyny łąkowej (czerwonej) jest często stosowany przez kobiety, ponieważ zawiera:",
+        options: ["Izoflawony (fitofestrogeny)", "Kofeinę", "Witaminę D3", "Torbieliny"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Koniczyna łąkowa</b> jest bogata w izoflawony – związki roślinne o strukturze zbliżonej do ludzkich estrogenów. Dzięki temu naturalnie i łagodnie redukuje uderzenia gorąca oraz inne objawy towarzyszące menopauzie."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Która dzika roślina czosnkowa rosnąca w lasach jest silnym, naturalnym antybiotykiem?",
+        options: ["Czosnek niedźwiedzi", "Konwalijka dwulistna", "Cebula perłowa", "Szczypiorek leśny"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Czosnek niedźwiedzi</b> zawiera bardzo duże ilości związków siarki (w tym allicynę), które niszczą bakterie, wirusy i pasożyty układu pokarmowego, nie niszcząc przy tym naturalnej flory bakteryjnej organizmu."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Płatki którego polnego kwiatu są surowcem zielarskim o działaniu powlekającym drogi oddechowe?",
+        options: ["Maku polnego", "Chabru bławatka", "Kąkolu", "Rumianku polnego"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Mak polny</b> posiada delikatne, czerwone płatki bogate w związki śluzowe oraz nieuzależniające alkaloidy. Napary z maku działają osłaniająco na gardło, zmniejszają odruch suchego kaszlu i ułatwiają odkrztuszanie."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Kwiaty i owoce bzu czarnego są cenionym surowcem o działaniu przeciwwirusowym. Czy wolno je jeść na surowo?",
+        options: ["Tak, są słodkie", "Nie, surowe zawierają trującą sambunigrynę", "Tylko dojrzałe owoce", "Tak, ale tylko kwiaty"],
+        correct: 1,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Bez czarny</b> to potężny lek antywirusowy, jednak jego surowe części zawierają sambunigrynę, która może wywołać silne zatrucie. Wszystkie przetwory (syropy, soki, dżemy) muszą być bezwzględnie poddane obróbce termicznej (gotowaniu) lub suszeniu, co całkowicie neutralizuje toksynę."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Ziele krwawnika pospolitego swoją łacińską nazwę (Achillea) zawdzięcza tradycyjnemu zastosowaniu do:",
+        options: ["Tamowania krwawień i gojenia ran", "Wzmacniania wzroku", "Płukania włosów", "Leczenia bezsenności"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Krwawnik pospolity</b> według mitologii był używany przez Achillesa do leczenia ran wojennych. Zawiera achilleinę oraz garbniki, które przyspieszają krzepnięcie krwi, obkurczają naczynia i działają silnie przeciwbakteryjnie na uszkodzoną skórę."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Owoce borówki czarnej (jagody) są powszechnie stosowane w okulistyce, ponieważ:",
+        options: ["Poprawiają mikrokrążenie w oku i widzenie o zmierzchu", "Zmieniają kolor tęczówki", "Nawilżają oko od zewnątrz", "Leczą jaskrę w 1 dzień"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Borówka czarna (czarna jagoda)</b> zawiera antocyjany, które regenerują rodopsynę – barwnik siatkówki odpowiedzialny za widzenie po ciemku. Dodatkowo uszczelniają naczynia włosowate w gałce ocznej, chroniąc wzrok przed zmęczeniem."
+    },
+    {
+        image: "https://unsplash.com",
+        q: "Które popularne zioło o charakterystycznym, cytrynowym zapachu jest stosowane w celu redukcji stresu?",
+        options: ["Melisa lekarska", "Mięta", "Szałwia", "Rozmaryn"],
+        correct: 0,
+        info: "<b>💡 FISZKA PODSUMOWUJĄCA: Melisa lekarska (Melissa officinalis)</b> zawiera kwas rozmarynowy, który podnosi poziom kwasu GABA w mózgu, wywołując stan odprężenia. Zmniejsza napięcie wywołane stresem, łagodzi lęki i ułatwia zasypianie."
+    }
+];
+
+let currentIndex = 0;
+let score = 0;
+
+function startLearning() {
+    document.getElementById("start-screen").classList.add("hidden");
+    document.getElementById("learning-screen").classList.remove("hidden");
+    loadQuestion();
+}
+
+function loadQuestion() {
+    const current = educationDatabase[currentIndex];
+    
+    // Aktualizacja paska postępu
+    document.getElementById("progress-text").innerText = `Zagadnienie ${currentIndex + 1} z ${educationDatabase.length}`;
+    const progressPercent = (currentIndex / educationDatabase.length) * 100;
+    document.getElementById("progress").style.width = `${progressPercent}%`;
+    
+    // Ładowanie obrazka i czyszczenie widoku fiszki
+    document.getElementById("main-image").src = current.image;
+    document.getElementById("fiszka").classList.add("hidden");
+    document.getElementById("next-btn").classList.add("hidden");
+    
+    // Generowanie kafelków z odpowiedziami
+    const grid = document.getElementById("options-grid");
+    grid.innerHTML = "";
+    
+    current.options.forEach((name, index) => {
+        const tile = document.createElement("div");
+        tile.classList.add("option-tile");
+        tile.innerText = name;
+        tile.onclick = () => checkAnswer(index, tile);
+        grid.appendChild(tile);
+    });
+}
+
+function checkAnswer(selectedIndex, clickedTile) {
+    const current = educationDatabase[currentIndex];
+    const tiles = document.querySelectorAll(".option-tile");
+    
+    // Blokada ponownego klikania w kafelki
+    tiles.forEach(tile => tile.classList.add("disabled"));
+    
+    // Sprawdzenie poprawności wyboru (Tylko JEDNA odpowiedź może być dobra)
+    if (selectedIndex === current.correct) {
+        clickedTile.classList.add("correct");
+        score++;
+    } else {
+        clickedTile.classList.add("wrong");
+        tiles[current.correct].classList.add("correct"); // Podświetlenie dobrej odpowiedzi
+    }
+    
+    // Wyświetlenie okienka z pełną odpowiedzią (Fiszka)
+    const fiszkaBox = document.getElementById("fiszka");
+    fiszkaBox.innerHTML = current.info;
+    fiszkaBox.classList.remove("hidden");
+    
+    // Pokazanie przycisku "Dalej"
+    document.getElementById("next-btn").classList.remove("hidden");
+}
+
+function nextQuestion() {
+    currentIndex++;
+    if (currentIndex < educationDatabase.length) {
+        loadQuestion();
+    } else {
+        // Ekran końca nauki
+        document.getElementById("learning-screen").classList.add("hidden");
+        document.getElementById("end-screen").classList.remove("hidden");
+        document.getElementById("final-score").innerText = `${score} / ${educationDatabase.length}`;
+    }
+}
+</script>
+</body>
+</html>
